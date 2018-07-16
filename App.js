@@ -1,85 +1,58 @@
 import React from 'react';
-import { StyleSheet, SafeAreaView } from 'react-native';
-import { Button } from 'react-native-elements';
-import { Constants, Location, Permissions } from 'expo'
+import { Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { AppLoading, Asset } from 'expo';
+import AppNavigator from './navigation/AppNavigator';
 
-import Map from './components/Map';
-import Header from './components/Header';
-import AgentService from './services/agents';
-
-const deltas = {
-  latitudeDelta: 0.0922,
-  longitudeDelta: 0.0421
-};
 
 export default class App extends React.Component {
 
   state = {
-    region: null,
-    serviceAgents: [],
-  }
-
-  getNearbyAgents() {
-    const { latitude, longitude } = this.state.region;
-    const userLocation = { latitude, longitude };
-    const serviceAgents = AgentService.getNearbyAgents(userLocation);
-    this.setState({ serviceAgents });
+    isLoadingComplete: false,
   }
 
   componentWillMount() {
-    this.getLocationAsync()
   }
 
-  getLocationAsync = async () => {
-     let { status } = await Permissions.askAsync(Permissions.LOCATION);
-     if (status !== 'granted') {
-      this.setState({
-        errorMessage: 'Permission to access location was denied'
-      });
-     }
+  _loadResourcesAsync = async () => {
+    return Promise.all([
+      Asset.loadAsync([
+        require('./assets/logo.png'),
+      ])
+    ])
+  }
 
-     let location = await Location.getCurrentPositionAsync({});
-     const region = {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      ...deltas
-    };
-    await this.setState({ region });
-    this.getNearbyAgents();
+  _handleLoadingError = error => {
+    console.warn(error);
+  }
+
+  _handleFinishLoading = () => {
+    this.setState({ isLoadingComplete: true });
+    console.log('assets loaded');
   }
 
   render() {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Header/>
-        <Map
-          region={this.state.region}
-          places={this.state.serviceAgents}
-        />
-        <Button 
-          large
-          title="Assist me" 
-          containerViewStyle={styles.buttonContainer} 
-          buttonStyle={styles.button}/>
-      </SafeAreaView>
-    );
+  if (!this.state.isLoadingComplete && !this.props.skipLoadingScreen) {
+      return (
+        <AppLoading
+            startAsync={this._loadResourcesAsync}
+            onError={this._handleLoadingError}
+            onFinish={this._handleFinishLoading}
+          />
+        );
+      } else {
+        return (
+          <View style={styles.container}>
+            {Platform.OS === 'ios' && <StatusBar barStyle="default" />}
+            <AppNavigator />
+          </View>
+        );
+      }
   }
 }
 
 const styles = StyleSheet.create({
   container: {
-    //paddingTop: Constants.statusBarHeight,
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  buttonContainer: {
-    marginLeft: 0,
-    marginRight: 0,
-    width: '100%',
-  },
-  button: {
-    backgroundColor: 'red',
-  }
 });
